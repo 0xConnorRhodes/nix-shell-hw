@@ -23,7 +23,6 @@
 
           shellHook = ''
             echo "This shell is for: ${system}"
-            ps -p $$
           '';
 
           # ENV

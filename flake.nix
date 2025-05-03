@@ -1,26 +1,38 @@
 {
-  description = "A very basic flake";
+  description = "A flake with a multi-arch devShell";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, ... }:
   let
-    pkgs = nixpkgs.legacyPackages."aarch64-darwin";
+    supportedSystems = [ "aarch64-darwin" "x86_64-linux" ];
+
+    # Obtain 'lib' from any one import (arch doesn't matter for lib)
+    lib = (import nixpkgs { system = "x86_64-linux"; }).lib;
+
+    makeShell = system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+      in
+      {
+        # default devShell
+        default = pkgs.mkShell {
+          packages = with pkgs; [ cowsay ];
+
+          shellHook = ''
+            echo "This shell is for: ${system}"
+            ps -p $$
+          '';
+
+          # ENV
+          VAR1 = "123";
+          VAR2 = "456";
+        };
+      };
   in
   {
-    devShells."aarch64-darwin".default = pkgs.mkShell {
-      packages = with pkgs; [
-        cowsay
-      ];
-
-      shellHook = ''
-        ps -p $$ # print active shell
-      '';
-
-      VAR1 = "123";
-      VAR2 = "456";
-    };
+    devShells = lib.genAttrs supportedSystems (system: makeShell system);
   };
 }
